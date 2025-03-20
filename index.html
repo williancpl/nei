@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestor de Prestações de Conta - Grupo Jales</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Adicionar Tesseract.js -->
+    <script src='https://unpkg.com/tesseract.js@v2.1.1/dist/tesseract.min.js'></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-content">
+                <div class="logo-container">
+                    <img src="logo-grupo-jales.png" alt="Logo Grupo Jales" class="logo">
+                </div>
+                <div class="header-text">
+                    <h1>Gestor de Prestações de Conta</h1>
+                </div>
+                <nav>
+                    <button id="btnLogin">Login</button>
+                    <button id="btnLogout" style="display: none;">Sair</button>
+                </nav>
+            </div>
+        </header>
+
+        <!-- Tela de Login -->
+        <div id="loginScreen" class="screen">
+            <h2>Login</h2>
+            <form id="loginForm">
+                <input type="email" id="email" placeholder="Email" required>
+                <input type="password" id="password" placeholder="Senha" required>
+                <button type="submit">Entrar</button>
+            </form>
+        </div>
+
+        <!-- Tela de Usuário -->
+        <div id="userScreen" class="screen" style="display: none;">
+            <h2>Registrar Nova Despesa</h2>
+            <form id="expenseForm">
+                <div class="receipt-upload-section">
+                    <h3>Digitalizar Recibo</h3>
+                    <div class="camera-container">
+                        <video id="camera" autoplay playsinline style="display: none;"></video>
+                        <canvas id="canvas" style="display: none;"></canvas>
+                        <div id="camera-preview"></div>
+                    </div>
+                    <div class="camera-controls">
+                        <button type="button" id="startCamera" class="camera-btn">Iniciar Câmera</button>
+                        <button type="button" id="captureImage" class="camera-btn" style="display: none;">Capturar Imagem</button>
+                        <button type="button" id="retakeImage" class="camera-btn" style="display: none;">Tirar Nova Foto</button>
+                    </div>
+                    <div class="ocr-status" style="display: none;">
+                        <p>Processando imagem...</p>
+                        <div class="progress-bar">
+                            <div class="progress"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-divider">ou</div>
+                <div class="file-upload-section">
+                    <h3>Upload de Recibo</h3>
+                    <input type="file" id="receipt" accept="image/*,.pdf">
+                </div>
+                <input type="text" id="description" placeholder="Descrição" required>
+                <input type="number" id="amount" placeholder="Valor" required>
+                <select id="category" required>
+                    <option value="">Selecione a categoria</option>
+                    <option value="alimentacao">Alimentação</option>
+                    <option value="hospedagem">Hospedagem</option>
+                    <option value="transporte">Transporte</option>
+                    <option value="outros">Outros</option>
+                </select>
+                <input type="date" id="date" required>
+                <textarea id="observation" placeholder="Observações (opcional)" rows="3"></textarea>
+                <button type="submit">Registrar Despesa</button>
+            </form>
+            <div class="expenses-list">
+                <h3>Minhas Despesas</h3>
+                <div id="userExpensesList"></div>
+            </div>
+        </div>
+
+        <!-- Tela de Administrador -->
+        <div id="adminScreen" class="screen" style="display: none;">
+            <h2>Painel Administrativo</h2>
+            <div class="admin-nav">
+                <button class="nav-btn active" data-section="expenses">Despesas</button>
+                <button class="nav-btn" data-section="reimbursement">Fechamento de Reembolso</button>
+                <button class="nav-btn" data-section="reports">Relatório de Fechamentos</button>
+                <button class="nav-btn" data-section="users">Gerenciar Usuários</button>
+            </div>
+            
+            <div id="expensesSection" class="admin-section active">
+                <div class="admin-controls">
+                    <select id="filterStatus">
+                        <option value="todos">Todos os Status</option>
+                        <option value="pendente">Pendentes</option>
+                        <option value="aprovado">Aprovados</option>
+                        <option value="rejeitado">Rejeitados</option>
+                        <option value="reembolsado">Reembolsados</option>
+                    </select>
+                    <select id="filterUser">
+                        <option value="todos">Todos os Usuários</option>
+                    </select>
+                </div>
+                <div class="expenses-list">
+                    <h3>Despesas para Aprovação</h3>
+                    <div id="adminExpensesList"></div>
+                </div>
+            </div>
+
+            <div id="reimbursementSection" class="admin-section">
+                <div class="reimbursement-section">
+                    <h3>Fechamento de Reembolso</h3>
+                    <div class="reimbursement-controls">
+                        <div class="selected-expenses">
+                            <h4>Despesas Selecionadas</h4>
+                            <div id="selectedExpensesList"></div>
+                            <div class="total-amount">
+                                <p>Total: R$ <span id="totalAmount">0,00</span></p>
+                            </div>
+                        </div>
+                        <div class="reimbursement-form">
+                            <input type="date" id="reimbursementDate" required>
+                            <button id="createReimbursement" class="reimbursement-btn">Criar Fechamento</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="reportsSection" class="admin-section">
+                <div class="reports-section">
+                    <h3>Relatório de Fechamentos</h3>
+                    <div class="reports-controls">
+                        <div class="date-range">
+                            <input type="date" id="startDate">
+                            <span>até</span>
+                            <input type="date" id="endDate">
+                            <button id="filterReports" class="filter-btn">Filtrar</button>
+                        </div>
+                        <div class="export-controls">
+                            <button id="exportExcel" class="export-btn">Exportar Excel</button>
+                            <button id="exportPDF" class="export-btn">Exportar PDF</button>
+                        </div>
+                    </div>
+                    <div class="reports-summary">
+                        <div class="summary-card">
+                            <h4>Total de Fechamentos</h4>
+                            <p class="total-closures">0</p>
+                        </div>
+                        <div class="summary-card">
+                            <h4>Valor Total</h4>
+                            <p class="total-value">R$ 0,00</p>
+                        </div>
+                        <div class="summary-card">
+                            <h4>Média por Fechamento</h4>
+                            <p class="average-value">R$ 0,00</p>
+                        </div>
+                    </div>
+                    <div class="reports-table-container">
+                        <table class="reports-table">
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>ID</th>
+                                    <th>Usuário</th>
+                                    <th>Total</th>
+                                    <th>Qtd. Despesas</th>
+                                    <th>Detalhes</th>
+                                </tr>
+                            </thead>
+                            <tbody id="reportsTableBody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="admin-section" id="usersSection">
+                <h2>Gerenciamento de Usuários</h2>
+                <div class="users-container">
+                    <div class="users-header">
+                        <h3>Cadastrar Novo Usuário</h3>
+                        <button class="add-user-btn" onclick="showAddUserModal()">Adicionar Usuário</button>
+                    </div>
+                    
+                    <div class="users-list">
+                        <h3>Usuários Cadastrados</h3>
+                        <table class="users-table">
+                            <thead>
+                                <tr>
+                                    <th>Email</th>
+                                    <th>Tipo</th>
+                                    <th>Status</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usersTableBody">
+                                <!-- Lista de usuários será inserida aqui via JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="last-update">
+                Última atualização: <span id="lastUpdateTime">-</span>
+                <button onclick="forceUpdate()" class="update-btn">Atualizar Agora</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Cadastro de Usuário -->
+    <div id="userModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h3>Cadastrar Novo Usuário</h3>
+            <form id="userForm">
+                <div class="form-group">
+                    <label for="userEmail">Email:</label>
+                    <input type="email" id="userEmail" required>
+                </div>
+                <div class="form-group">
+                    <label for="userPassword">Senha:</label>
+                    <input type="password" id="userPassword" required>
+                </div>
+                <div class="form-group">
+                    <label for="userType">Tipo de Usuário:</label>
+                    <select id="userType" required>
+                        <option value="user">Usuário Normal</option>
+                        <option value="admin">Administrador</option>
+                    </select>
+                </div>
+                <button type="submit" class="submit-btn">Cadastrar</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html> 
